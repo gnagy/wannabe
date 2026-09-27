@@ -1,0 +1,45 @@
+#!/usr/bin/env bun
+// wannabe: --in <context> [--quiet] [--dry-run] — follow the service's log until it reports ready, or fail after the timeout
+//
+// Polls spec.readiness on the context's host until it answers, for up to
+// spec.readinessTimeoutSeconds (180 by default), streaming the service's log meanwhile.
+// On timeout it shows the last log lines and fails.
+import { capture, die, get, getOptional, host, parseArgs, say } from "../../lib/plugin.ts";
+
+const args = parseArgs(process.argv.slice(2), { flags: ["--quiet"] });
+const target = await host(args.context);
+const remoteDir = await get(`${args.context}/deployment`, "spec.remoteDir");
+const service = await get(`${args.context}/deployment`, "spec.service");
+const readiness = await get(`${args.context}/deployment`, "spec.readiness");
+const timeout = Number((await getOptional(`${args.context}/deployment`, "spec.readinessTimeoutSeconds")) ?? 180);
+
+if (args.dryRun) {
+  say(`dry run: poll ${readiness} on ${target} for up to ${timeout}s`);
+  process.exit(0);
+}
+
+say(`Waiting for ${readiness} on ${target}`);
+// The current container's log from its start, at most its last 500 lines when it has been up long.
+const since = `started=$(docker inspect -f '{{.State.StartedAt}}' $(docker compose ps -q '${service}'))`;
+const follower = args.flags.has("--quiet")
+  ? undefined
+  : Bun.spawn(
+      ["ssh", target, `cd '${remoteDir}' && ${since} && exec docker compose logs -f --no-log-prefix --tail 500 --since "$started" '${service}'`],
+      { stdio: ["ignore", 2, 2], env: process.env },
+    );
+const stop = () => follower?.kill();
+process.on("exit", stop);
+
+const deadline = Date.now() + timeout * 1000;
+while (capture(["ssh", target, `curl -fsS '${readiness}'`]).code !== 0) {
+  if (Date.now() >= deadline) {
+    stop();
+    if (args.flags.has("--quiet")) {
+      say(capture(["ssh", target, `cd '${remoteDir}' && docker compose logs --tail 50 '${service}'`]).stdout);
+    }
+    die(1, `${service} not ready after ${timeout}s`);
+  }
+  await Bun.sleep(5000);
+}
+stop();
+say(`${service} is ready`);

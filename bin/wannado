@@ -1,0 +1,5 @@
+#!/usr/bin/env bun
+// wannado: the command; see src/main.ts.
+import { main } from "../src/main.ts";
+
+process.exit(await main("wannado", process.argv.slice(2)));

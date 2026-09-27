@@ -1,0 +1,55 @@
+#!/usr/bin/env bun
+// wannabe: --to <context> [--push] [--dry-run] — commit the deployment's files in the infra repo, once the context is verified; --push pushes it
+//
+// Commits the context's deployment files in the infra repo, and only those: anything else
+// staged stays out. --push then pushes, refusing when an unpushed commit touches other files or
+// someone else pushed first. Safe to rerun: with nothing to commit it only pushes.
+import { join, relative } from "node:path";
+import { capture, deployDir, die, get, getList, parseArgs, repoRoot, run, say } from "../../lib/plugin.ts";
+import { serviceImage } from "../../lib/compose.ts";
+
+const args = parseArgs(process.argv.slice(2), { flags: ["--push"] });
+const dir = await deployDir(args.context);
+const repo = repoRoot(dir);
+const service = await get(`${args.context}/deployment`, "spec.service");
+const files = await getList(`${args.context}/deployment`, "spec.files");
+const paths = files.map((file) => relative(repo, join(dir, file)));
+const image = serviceImage(await Bun.file(join(dir, files[0])).text(), service) ?? "";
+const tag = image.split(":").at(-1);
+
+// Only this context's files: committed by path, so anything else staged in the infra repo stays out.
+const git = (...command: string[]) => capture(["git", "-C", repo, ...command]);
+if (!args.dryRun && git("diff", "--quiet", "HEAD", "--", ...paths).code === 0) {
+  say("Nothing to commit: the infra repo already has this deployment");
+} else {
+  await run(["git", "-C", repo, "commit", "-m", `Release ${service}:${tag} to ${args.context.toUpperCase()}`, "--", ...paths]);
+}
+
+if (args.flags.has("--push")) {
+  // Rerunnable: the commit above is kept whatever happens here, and a rerun only pushes.
+  if (git("fetch", "--quiet").code !== 0) die(1, `cannot fetch ${repo}; nothing pushed, rerun once it is reachable`);
+  const ahead = git("rev-list", "@{u}..HEAD");
+  if (ahead.code !== 0) die(1, `${repo} has no upstream to push to`);
+  const theirs = git("log", "--oneline", "HEAD..@{u}").stdout.trim();
+  if (theirs) {
+    say(theirs);
+    die(1, `${repo} has commits someone else pushed; run: git -C ${repo} pull --rebase, then rerun this command`);
+  }
+  // git pushes the whole branch: refuse when an unpushed commit touches anything but this context's files.
+  const commits = ahead.stdout.trim().split("\n").filter(Boolean);
+  for (const commit of commits) {
+    const others = git("diff-tree", "--no-commit-id", "--name-only", "-r", commit)
+      .stdout.trim().split("\n").filter((path) => path && !paths.includes(path));
+    if (others.length > 0) {
+      say(others.join("\n"));
+      die(1, `unpushed commit ${git("log", "--oneline", "-1", commit).stdout.trim()} changes files outside ${args.context}'s deployment; push it deliberately with git -C ${repo} push`);
+    }
+  }
+  if (commits.length === 0 && !args.dryRun) {
+    say(`Nothing to push: ${repo} is up to date with its upstream`);
+  } else {
+    say(git("log", "--oneline", "@{u}..HEAD").stdout.trim());
+    const code = await run(["git", "-C", repo, "push"], { allowFailure: true });
+    if (code !== 0) die(1, "push failed; the commit is kept. Fix the cause, then rerun this command");
+  }
+}

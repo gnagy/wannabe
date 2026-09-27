@@ -1,0 +1,8 @@
+#!/usr/bin/env bun
+// wannabe: [--dry-run] — the Gradle tasks .wannabe/gradle.yaml lists under spec.tasks.built
+//
+// Runs them with the project's ./gradlew, or gradle when there is none. A command with no tasks there
+// answers with exit code 3.
+import { gradle } from "../../lib/plugin.ts";
+
+await gradle("built");

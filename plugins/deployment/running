@@ -1,0 +1,18 @@
+#!/usr/bin/env bun
+// wannabe: --to <context> [--follow] [--dry-run] — start the service with its current compose file, replacing what runs; --follow streams its log until Ctrl-C
+//
+// Runs docker compose up -d for spec.service on the context's host, which replaces the
+// container when its image or configuration changed. Follow with wannabe deployment ready.
+import { get, host, parseArgs, run } from "../../lib/plugin.ts";
+
+const args = parseArgs(process.argv.slice(2), { flags: ["--follow"] });
+const target = await host(args.context);
+const remoteDir = await get(`${args.context}/deployment`, "spec.remoteDir");
+const service = await get(`${args.context}/deployment`, "spec.service");
+await run(["ssh", target, `cd '${remoteDir}' && docker compose up -d '${service}'`]);
+if (args.flags.has("--follow") && !args.dryRun) {
+  // The log of the container now running, from its start: what up -d just started, not what ran before.
+  const since = `started=$(docker inspect -f '{{.State.StartedAt}}' $(docker compose ps -q '${service}'))`;
+  const follow = `cd '${remoteDir}' && ${since} && exec docker compose logs -f --no-log-prefix --since "$started" '${service}'`;
+  await run(["ssh", ...(process.stdin.isTTY ? ["-t"] : []), target, follow], { tty: true, allowFailure: true });
+}

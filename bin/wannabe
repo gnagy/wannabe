@@ -1,0 +1,5 @@
+#!/usr/bin/env bun
+// wannabe: the command; see src/main.ts.
+import { main } from "../src/main.ts";
+
+process.exit(await main("wannabe", process.argv.slice(2)));

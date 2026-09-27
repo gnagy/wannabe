@@ -1,0 +1,30 @@
+#!/usr/bin/env bun
+// wannabe: [--ignore-uncommitted] [--dry-run] — build and push the image; prints the tag
+//
+// Runs the Gradle tasks in .wannabe/docker.yaml (spec.pushTasks, e.g. jib), then reads the image and tag
+// back from build/jib-image.json and fails unless the image was pushed.
+// Refuses uncommitted changes, since the image records the commit it was built from;
+// --ignore-uncommitted builds anyway, for changes that do not go into the image.
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { capture, die, getList, parseArgs, projectDir, run, say } from "../../lib/plugin.ts";
+
+const args = parseArgs(process.argv.slice(2), { context: "none", flags: ["--ignore-uncommitted"] });
+
+const uncommitted = capture(["git", "status", "--porcelain", "--untracked-files=no"]).stdout.trim();
+if (uncommitted) {
+  say(uncommitted);
+  if (!args.flags.has("--ignore-uncommitted")) {
+    die(1, "uncommitted changes; commit them, or check they do not go into the image and pass --ignore-uncommitted");
+  }
+  say("Building anyway (--ignore-uncommitted): the image's commit does not fully describe it");
+}
+
+const gradlew = existsSync(join(projectDir, "gradlew")) ? "./gradlew" : "gradle";
+await run([gradlew, ...(await getList("docker", "spec.pushTasks"))]);
+
+const output = Bun.file(join(projectDir, "build", "jib-image.json"));
+if (!(await output.exists())) die(1, "no build/jib-image.json; has the image been built?");
+const image = await output.json();
+if (!args.dryRun && image.imagePushed !== true) die(1, `the build did not push ${image.image}`);
+console.log(String(image.image).split(":").at(-1));

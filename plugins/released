@@ -1,0 +1,12 @@
+#!/usr/bin/env bun
+// wannabe: --to <context> [--ignore-uncommitted] [--dry-run] — gradle built, docker pushed, deployment pinned
+//
+// Runs the release steps in order, stopping at the first that fails and naming it:
+// gradle built, docker pushed, deployment pinned. Nothing on any host changes;
+// the deployment's files in the infra repo end up pointing at the new image.
+import { parseArgs, step } from "../lib/plugin.ts";
+
+const args = parseArgs(process.argv.slice(2), { flags: ["--ignore-uncommitted"] });
+await step("gradle", "built");
+await step("docker", "pushed", ...args.flags);
+await step("deployment", "pinned", "--to", args.context);

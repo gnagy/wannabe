@@ -1,0 +1,16 @@
+#!/usr/bin/env bun
+// wannabe: --to <context> [--dry-run] — copy the deployment's directory to the host (nothing deleted there)
+//
+// rsyncs the deployment directory (spec.dir) to spec.remoteDir on the context's host
+// (spec.endpoints.host in context.yaml). Never deletes on the host. Refuses when the infra repo is
+// behind its upstream. The running service is not touched.
+import { deployDir, get, host, parseArgs, requireUpToDate, run } from "../../lib/plugin.ts";
+
+const args = parseArgs();
+const target = await host(args.context);
+const dir = await deployDir(args.context);
+const remoteDir = await get(`${args.context}/deployment`, "spec.remoteDir");
+requireUpToDate(dir);
+// A listing even in a dry run: rsync's own dry run says what would be copied.
+process.env.WANNABE_DRY_RUN = "0";
+await run(["rsync", args.dryRun ? "-avn" : "-av", `${dir}/`, `${target}:${remoteDir}/`]);

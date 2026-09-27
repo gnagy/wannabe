@@ -1,0 +1,14 @@
+#!/usr/bin/env bun
+// wannabe: --to <context> [--dry-run] — deployment synced, pulled, running, ready; then verify and run deployment committed
+//
+// Runs the deploy steps in order, stopping at the first that fails and naming it:
+// deployment synced, pulled, running, ready. Does not commit: once the context is verified,
+// run wannabe deployment committed --to <context> --push.
+import { parseArgs, say, step } from "../lib/plugin.ts";
+
+const args = parseArgs();
+await step("deployment", "synced", "--to", args.context);
+await step("deployment", "pulled", "--to", args.context);
+await step("deployment", "running", "--to", args.context);
+await step("deployment", "ready", "--in", args.context);
+say(`Deployed to ${args.context}. Once it is verified: wannabe deployment committed --to ${args.context} --push`);

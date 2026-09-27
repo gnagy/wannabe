@@ -1,0 +1,21 @@
+{
+  "name": "wannabe",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desired-state operations without a cluster, shaped like Kubernetes",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit && bun scripts/typecheck-plugins.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "typescript": "^7.0.2"
+  },
+  "bin": {
+    "wannabe": "bin/wannabe",
+    "wannado": "bin/wannado",
+    "wannatry": "bin/wannatry"
+  }
+}

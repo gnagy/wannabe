@@ -1,0 +1,47 @@
+#!/usr/bin/env bun
+// wannabe: --to <context> [--tag <tag>] [--dry-run] — pin the deployment's image to a tag, the last build's by default
+//
+// Rewrites the image of spec.service in the context's deployment files (spec.dir, spec.files). The image name
+// comes from the compose file, the tag from the last build, or --tag. Refuses when the last build was of
+// another image, and when the infra repo is behind its upstream. Local only: nothing is synced or committed.
+import { join } from "node:path";
+import { deployDir, die, get, getList, parseArgs, projectDir, requireUpToDate, say } from "../../lib/plugin.ts";
+import { pinImage, serviceImage } from "../../lib/compose.ts";
+
+const args = parseArgs(process.argv.slice(2), { options: ["--tag"] });
+const dir = await deployDir(args.context);
+const service = await get(`${args.context}/deployment`, "spec.service");
+const files = await getList(`${args.context}/deployment`, "spec.files");
+
+const current = serviceImage(await Bun.file(join(dir, files[0])).text(), service);
+if (!current) die(1, `no image for service ${service} in ${join(dir, files[0])}`);
+const image = current.replace(/:[^:/]*$/, "");
+
+let tag = args.values["--tag"];
+if (!tag) {
+  const output = Bun.file(join(projectDir, "build", "jib-image.json"));
+  if (!(await output.exists())) die(1, "no build/jib-image.json; run wannabe docker pushed, or pass --tag");
+  const built = String((await output.json()).image);
+  if (built.replace(/:[^:/]*$/, "") !== image) {
+    die(1, `the last build is ${built}, not ${image}; run wannabe docker pushed, or pass --tag`);
+  }
+  tag = built.split(":").at(-1)!;
+}
+
+requireUpToDate(dir);
+
+for (const file of files) {
+  const path = join(dir, file);
+  const source = Bun.file(path);
+  if (!(await source.exists())) die(1, `${path} does not exist`);
+  const before = await source.text();
+  const { text, changed } = pinImage(before, service, `${image}:${tag}`);
+  if (changed.length === 0) {
+    say(`${file}: no change (already ${tag}, or no image for ${service})`);
+  } else if (args.dryRun) {
+    for (const line of changed) say(`${file}: - ${line.before.trim()}\n${file}: + ${line.after.trim()}`);
+  } else {
+    await Bun.write(path, text);
+    say(`${file}: ${image}:${tag}`);
+  }
+}
