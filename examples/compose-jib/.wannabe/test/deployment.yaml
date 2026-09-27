@@ -1,0 +1,11 @@
+apiVersion: wannabe/v1alpha1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  dir: ../my-app-infra/test/my-app                            # in the infra repo, relative to the project
+  files: [compose.yml]                                        # whose image: line a release rewrites
+  remoteDir: /opt/docker/my-app                               # on the context's host
+  service: my-app
+  readiness: http://localhost:8080/actuator/health/readiness  # polled on the host after the restart
+  readinessTimeoutSeconds: 180

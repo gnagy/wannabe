@@ -1,0 +1,6 @@
+apiVersion: wannabe/v1alpha1
+kind: DockerImage
+metadata:
+  name: my-app
+spec:
+  pushTasks: [jib]

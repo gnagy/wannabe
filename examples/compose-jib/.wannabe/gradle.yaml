@@ -1,0 +1,9 @@
+apiVersion: wannabe/v1alpha1
+kind: GradleBuild
+metadata:
+  name: my-app
+spec:
+  tasks:
+    built: [bootJar]
+    cleaned: [clean]
+    tested: [test]
