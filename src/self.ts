@@ -4,7 +4,7 @@ import { delimiter, join } from "node:path";
 import { formatValue, readValue } from "./config.ts";
 import type { Env } from "./project.ts";
 
-export const SELF_COMMANDS = ["installed", "uninstalled", "completion", "get", "version"];
+export const SELF_COMMANDS = ["installed", "uninstalled", "updated", "completion", "get", "version"];
 const COMMANDS = ["wannabe", "wannado", "wannatry"];
 
 export function selfUsage(): string {
@@ -12,6 +12,7 @@ export function selfUsage(): string {
     "Commands in self (built-in):",
     "  installed    [--into <dir>] [--force] — link wannabe, wannado and wannatry into <dir>, ~/.local/bin by default",
     "  uninstalled  [--into <dir>] — remove those links, when they point to this checkout",
+    "  updated      [--check] — fast-forward this checkout to its upstream, then run what the change needs",
     "  completion   zsh — print the zsh completion; source <(wannabe self completion zsh)",
     "  get          <file> <path> — a value from .wannabe/<file>.yaml, e.g. get test/deployment spec.dir",
     "  version      — this checkout's version and commit, and whether it has local changes",

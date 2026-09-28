@@ -3,6 +3,7 @@ import { complete } from "./complete.ts";
 import { helped, HelpError, listing } from "./help.ts";
 import { descend, type Env, isDirectory, isExecutableFile, locate, makeEnv } from "./project.ts";
 import { ExitError, get, links, selfUsage, version, ZSH_COMPLETION } from "./self.ts";
+import { updated } from "./update.ts";
 
 /** wannabe's checkout: bin/ is one level below it. */
 const HOME = dirname(import.meta.dir);
@@ -70,6 +71,9 @@ async function self(env: Env, args: string[]): Promise<number> {
     case "installed":
     case "uninstalled":
       console.error(links(env, args[0], args.slice(1)).join("\n"));
+      return 0;
+    case "updated":
+      console.error((await updated(env, args.slice(1))).join("\n"));
       return 0;
     case "completion":
       if (args[1] !== "zsh") throw new ExitError(`Usage: ${env.name} self completion zsh`, 2);

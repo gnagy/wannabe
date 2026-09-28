@@ -8,7 +8,7 @@ export function listing(env: Env, rel: string): string {
   const lines = [rel ? `Commands in ${rel.replaceAll("/", " ")}:` : "Commands:"];
   if (!rel) {
     lines.push(`  ${pad("helped", 12)} (built-in) [<group> [<command>]] — what the commands do, and how wannabe works`);
-    lines.push(`  ${pad("self", 12)} (built-in) installed, uninstalled, completion, get, version`);
+    lines.push(`  ${pad("self", 12)} (built-in) installed, uninstalled, updated, completion, get, version`);
   }
   for (const child of children(env, rel)) {
     lines.push(`  ${pad(child, 12)} ${describe(locate(env, rel ? `${rel}/${child}` : child)!)}`);
@@ -67,7 +67,7 @@ export function helped(env: Env, args: string[]): string {
     "",
     "Built-ins:",
     "  helped [<group> [<command>]]   this, or one group or command in detail",
-    "  self                           installed, uninstalled, completion, get, version",
+    "  self                           installed, uninstalled, updated, completion, get, version",
     "",
     "A failed shortcut stops at the step that failed and names it: fix the cause, then run the steps from there.",
     "Exit codes: 0 success, 1 failure, 2 wrong call, 3 not possible in this context.",

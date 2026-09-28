@@ -36,6 +36,10 @@ source <(wannabe self completion zsh)      # in ~/.zshrc
 This links `wannabe`, `wannado` and `wannatry` into `~/.local/bin`, or `<dir>`. Running it again changes
 nothing; `wannabe self uninstalled` removes the links, only where they point to this checkout.
 
+`wannabe self updated` fast-forwards the checkout to its upstream, runs `bun install` when the dependencies
+changed and the repository's `scripts/post-update` when there is one; `--check` only says whether there is an
+update. It refuses local changes, and a checkout that has diverged.
+
 ## A project
 
 A project keeps its configuration in `.wannabe/` at its root, found by walking up from the working directory:
