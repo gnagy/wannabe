@@ -78,7 +78,7 @@ await run(["ssh", target, "uptime"]);                                  // only p
 
 | Function                                       | Does                                                                                                                                                        |
 |------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `parseArgs(argv, { flags, options, context })` | the context from `--to`/`--from`/`--in`, `--dry-run`, and the declared flags and options; anything else exits 2. `context: "none"` for commands without one |
+| `parseArgs(argv, { flags, options, positional, context })` | the context from `--to`/`--from`/`--in`, `--dry-run`, and the declared flags and options; anything else exits 2. `context: "none"` for commands without one; `positional: true` collects the other words in `args.rest` |
 | `get(file, path)`, `getOptional`, `getList`    | a value from `.wannabe/<file>.yaml`; `get` exits 1 when it is missing                                                                                       |
 | `run(command, { cwd, allowFailure, tty })`     | runs it with its output on stderr, or only prints it in a dry run                                                                                           |
 | `capture(command)`                             | runs it and returns its exit code and output                                                                                                                |
@@ -87,6 +87,7 @@ await run(["ssh", target, "uptime"]);                                  // only p
 | `deployDir(context)`, `repoRoot(dir)`          | the deployment directory, resolved; the git repository holding a directory                                                                                  |
 | `requireUpToDate(dir)`                         | fetches that repository and exits 1 when it is behind its upstream                                                                                          |
 | `step(...words)`                               | runs another wannabe command; on failure names it and stops                                                                                                 |
+| `getSecret(name)` from `lib/secret.ts`         | a secret declared in `.wannabe/secrets.yaml`, from the environment, its command or the computer's store; exits 1, saying how to store it, when there is none |
 
 `lib/compose.ts` reads a service's image from a compose file and sets it, changing one line and keeping the
 rest as its author left it.

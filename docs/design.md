@@ -68,7 +68,6 @@ disappear. For applications that will never run on one, wannabe is the permanent
 ## Open questions
 
 1. How plugins from outside a project and outside wannabe are installed, versioned and pinned per project.
-2. Credentials: a context naming a command whose output is the secret, as kubeconfig's `exec` plugins do, with an
-   environment variable overriding it for CI.
-3. Trusting a project before running its plugins, as mise asks.
-4. Reading an application's metrics when they sit behind its sign-in.
+2. Trusting a project before running its plugins, as mise asks.
+3. Reading an application's metrics when they sit behind its sign-in.
+4. Secrets for ssh and for HTTP: only `docker pushed` reads them so far, through `lib/secret.ts`.

@@ -5,9 +5,13 @@
 // back from build/jib-image.json and fails unless the image was pushed.
 // Refuses uncommitted changes, since the image records the commit it was built from;
 // --ignore-uncommitted builds anyway, for changes that do not go into the image.
+// When .wannabe/docker.yaml has spec.registry, signs in with the secrets it names (see 'wannabe helped secret'),
+// for this push only; otherwise Jib uses the Docker login already on the computer.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { capture, die, getList, parseArgs, projectDir, run, say } from "../../lib/plugin.ts";
+import { capture, die, getList, getOptional, parseArgs, projectDir, run, say } from "../../lib/plugin.ts";
+import { registryConfig } from "../../lib/registry.ts";
+import { getSecret } from "../../lib/secret.ts";
 
 const args = parseArgs(process.argv.slice(2), { context: "none", flags: ["--ignore-uncommitted"] });
 
@@ -18,6 +22,18 @@ if (uncommitted) {
     die(1, "uncommitted changes; commit them, or check they do not go into the image and pass --ignore-uncommitted");
   }
   say("Building anyway (--ignore-uncommitted): the image's commit does not fully describe it");
+}
+
+const registry = await getOptional("docker", "spec.registry.host");
+if (registry) {
+  const usernameSecret = await getOptional("docker", "spec.registry.usernameSecret");
+  const passwordSecret = await getOptional("docker", "spec.registry.passwordSecret");
+  if (!usernameSecret || !passwordSecret) die(1, "spec.registry needs usernameSecret and passwordSecret in .wannabe/docker.yaml");
+  if (args.dryRun) say(`dry run: would sign in to ${registry} with the secrets '${usernameSecret}' and '${passwordSecret}'`);
+  else {
+    process.env.DOCKER_CONFIG = registryConfig(registry, await getSecret(usernameSecret), await getSecret(passwordSecret));
+    say(`Signing in to ${registry} with the secrets '${usernameSecret}' and '${passwordSecret}' for this push`);
+  }
 }
 
 const gradlew = existsSync(join(projectDir, "gradlew")) ? "./gradlew" : "gradle";

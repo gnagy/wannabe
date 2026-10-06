@@ -40,6 +40,8 @@ export interface Args {
   flags: Set<string>;
   /** Values of options that take one, of those declared. */
   values: Record<string, string>;
+  /** Words that are not options, when the plugin declares `positional`. */
+  rest: string[];
 }
 
 /**
@@ -48,15 +50,16 @@ export interface Args {
  */
 export function parseArgs(
   argv: string[] = process.argv.slice(2),
-  declared: { flags?: string[]; options?: string[]; context?: "required" | "none" } = {},
+  declared: { flags?: string[]; options?: string[]; positional?: boolean; context?: "required" | "none" } = {},
 ): Args {
-  const args: Args = { context: "", dryRun: process.env.WANNABE_DRY_RUN === "1", flags: new Set(), values: {} };
+  const args: Args = { context: "", dryRun: process.env.WANNABE_DRY_RUN === "1", flags: new Set(), values: {}, rest: [] };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (["--to", "--from", "--in"].includes(arg) && declared.context !== "none") args.context = argv[++i] ?? "";
     else if (arg === "--dry-run") args.dryRun = true;
     else if (declared.flags?.includes(arg)) args.flags.add(arg);
     else if (declared.options?.includes(arg)) args.values[arg] = argv[++i] ?? die(2, `${arg} needs a value`);
+    else if (declared.positional && !arg.startsWith("-")) args.rest.push(arg);
     else die(2, `unknown argument: ${arg}`);
   }
   if (args.dryRun) process.env.WANNABE_DRY_RUN = "1";

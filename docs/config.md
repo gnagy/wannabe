@@ -7,6 +7,7 @@ directory, so every command works from anywhere inside the project.
 .wannabe/
   gradle.yaml            # GradleBuild
   docker.yaml            # DockerImage
+  secrets.yaml           # Secrets
   <context>/
     context.yaml         # Context
     deployment.yaml      # Deployment
@@ -78,11 +79,17 @@ metadata:
   name: my-app
 spec:
   pushTasks: [jib]
+  registry:                       # optional
+    host: registry.example.com
+    usernameSecret: registry-username
+    passwordSecret: registry-token
 ```
 
-| Field            | Used by         | Meaning                                                                                                                                    |
-|------------------|-----------------|--------------------------------------------------------------------------------------------------------------------------------------------|
-| `spec.pushTasks` | `docker pushed` | Gradle tasks that build and push the image. They must write `build/jib-image.json`, as Jib does, from which the image and its tag are read |
+| Field                         | Used by         | Meaning                                                                                                                                                                                                  |
+|-------------------------------|-----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `spec.pushTasks`              | `docker pushed` | Gradle tasks that build and push the image. They must write `build/jib-image.json`, as Jib does, from which the image and its tag are read                                                               |
+| `spec.registry.host`          | `docker pushed` | The registry to sign in to. Without `spec.registry`, the push uses the Docker login already on the computer                                                                                              |
+| `spec.registry.usernameSecret`, `passwordSecret` | `docker pushed` | The names of two [secrets](#secrets), not their values. The push signs in with them from a scratch Docker configuration, which holds the user's own configuration too and is removed afterwards |
 
 ## GradleBuild
 
@@ -116,3 +123,43 @@ wannabe self get gradle spec.tasks.built          # one task per line
 ```
 
 It exits with 1 when the value is missing.
+
+## Secrets
+
+`.wannabe/secrets.yaml`. Names the secrets a project needs, and never holds one: the file is committed.
+
+```yaml
+apiVersion: wannabe/v1alpha1
+kind: Secrets
+metadata:
+  name: my-app
+spec:
+  registry-username: {}
+  registry-token:
+    description: Registry token with push rights, from the Azure portal
+  vault-token:
+    command: [op, read, "op://Shelton/registry/token"]
+```
+
+| Field                      | Meaning                                                                                              |
+|----------------------------|------------------------------------------------------------------------------------------------------|
+| `spec.<name>.description`  | Shown when the secret is missing or being stored                                                     |
+| `spec.<name>.command`      | A command, as a list, whose output is the value. Only for a secret that something else already keeps |
+
+A secret is looked up in this order, and the first that has it wins:
+
+1. The environment variable `WANNABE_SECRET_<NAME>`: the name upper-cased, anything but letters and digits as `_`
+   (`registry-token` is `WANNABE_SECRET_REGISTRY_TOKEN`). For CI.
+2. The secret's `command`, when it declares one.
+3. This computer's secret store: Keychain on macOS, libsecret on Linux, Credential Manager on Windows.
+   `wannabe secret stored <name>` puts a value there. Each project has its own space in it, so two projects can use
+   the same name.
+
+```
+wannabe secret stored registry-token      # prompts, hidden; or: pbpaste | wannabe secret stored registry-token
+wannabe secret checked                    # which declared secrets are found, and where; never prints a value
+wannabe secret forgotten registry-token   # removes it from the store
+```
+
+On Linux the store needs a desktop session with a running secret service. Without one (a server, a container),
+`stored` says so, and the environment variable is the way.

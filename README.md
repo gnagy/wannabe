@@ -47,7 +47,8 @@ A project keeps its configuration in `.wannabe/` at its root, found by walking u
 ```
 .wannabe/
   gradle.yaml          # which Gradle tasks gradle built, cleaned and tested run
-  docker.yaml          # which Gradle tasks build and push the image
+  docker.yaml          # which Gradle tasks build and push the image, and the secrets to sign in with
+  secrets.yaml         # the names of the secrets the project needs (never their values)
   test/
     context.yaml       # where test is: the application's URL, the host to deploy to
     deployment.yaml    # the compose directory, the service, how readiness is checked

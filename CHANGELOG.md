@@ -11,3 +11,8 @@ First version, used for one application's releases and test deployments.
 - Built-ins: `helped`, and `self installed` · `uninstalled` · `updated` · `completion` · `get` · `version`.
 - zsh completion.
 - Tests for dispatch, completion, compose editing and the deployment commands.
+- Secrets: `.wannabe/secrets.yaml` names them and never holds them; a value comes from `WANNABE_SECRET_<NAME>`, the
+  secret's own command, or the computer's secret store (Keychain, libsecret, Credential Manager, through
+  `Bun.secrets`). `secret stored` · `checked` · `forgotten`, and `getSecret()` for plugins.
+- `docker pushed` signs in to the registry named in `spec.registry` with two secrets, through a scratch Docker
+  configuration for that push, instead of needing a Docker login on the computer.

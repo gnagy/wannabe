@@ -26,11 +26,12 @@ export interface Run {
   stderr: string;
 }
 
-/** Runs one of the three commands from a directory, with a clean wannabe environment. */
-export function wannabe(cwd: string, args: string[], name = "wannabe"): Run {
+/** Runs one of the three commands from a directory, with a clean wannabe environment plus any `extra` variables. */
+export function wannabe(cwd: string, args: string[], name = "wannabe", extra: Record<string, string> = {}, stdin = ""): Run {
   const env = { ...process.env };
   for (const key of Object.keys(env)) if (key.startsWith("WANNABE_")) delete env[key];
-  const result = Bun.spawnSync([join(BIN, name), ...args], { cwd, env, stdout: "pipe", stderr: "pipe" });
+  Object.assign(env, extra);
+  const result = Bun.spawnSync([join(BIN, name), ...args], { cwd, env, stdin: Buffer.from(stdin), stdout: "pipe", stderr: "pipe" });
   return { code: result.exitCode, stdout: result.stdout.toString(), stderr: result.stderr.toString() };
 }
 
